@@ -1,9 +1,8 @@
 # Contributing
 
-1. Fork this repo.
-2. Run the desired benchmark under `benchmarks/<test>/`.
-3. Add your result JSON to `results/<code>/<machine>/<test>/`.
-4. Submit a Pull Request.
-5. Wait for CI validation to pass.
+1. Fork the repo and pick a benchmark from `benchmarks/`.
+2. Set up and run the benchmark using your simulation code.
+3. Save your benchmark results to a JSON file (per problem specs).
+4. Submit a Pull Request with your results in `results/<code>/<machine>/<benchmark>/`.
 
 If everything checks out, your result will appear on the leaderboard automatically.
