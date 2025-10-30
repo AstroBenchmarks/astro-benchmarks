@@ -1,5 +1,8 @@
 {
   "commit": "819ba9faad1f62509c8c4b60606dd9fe1c7b6842",
   "date": "2025-10-30 17:56:11+00:00",
-  "result": 0.0
+  "runtime": 11.0,
+  "throughput": 10.0,
+  "peak_memory": 10.0,
+  "accuracy": 99.0
 }

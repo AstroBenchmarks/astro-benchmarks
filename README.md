@@ -16,7 +16,8 @@ Each benchmark includes detailed specifications, reference solutions, and evalua
 
 Benchmarks test a variety of aspects of the code, including
 runtime,
-throughput (e.g. million-cell-updates-per-second),
+throughput,
+memory usage,
 and accuracy.
 
 Results are compiled and published on a Leaderboard.
