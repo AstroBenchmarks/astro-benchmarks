@@ -34,7 +34,9 @@ def discover_benchmarks():
             "name": info.get("name", item.name),
             "description": info.get("description", ""),
             "tags": info.get("tags", []),
-            "readme": readme_path.relative_to(REPO_ROOT).as_posix() if readme_path.exists() else None,
+            "readme": readme_path.relative_to(REPO_ROOT).as_posix()
+            if readme_path.exists()
+            else None,
         }
     return benchmarks
 
@@ -85,12 +87,14 @@ def discover_results():
                     parsed = parse_result_file(json_file)
                     if parsed is None:
                         continue
-                    records.append({
-                        "code": code_dir.name,
-                        "machine": machine_dir.name,
-                        "test": test_name,
-                        **parsed,
-                    })
+                    records.append(
+                        {
+                            "code": code_dir.name,
+                            "machine": machine_dir.name,
+                            "test": test_name,
+                            **parsed,
+                        }
+                    )
     return records
 
 
@@ -120,29 +124,134 @@ def generate_html(benchmarks: dict, results: list) -> str:
             )
         )
 
+    # Compute global stats
+    unique_codes = sorted({r["code"] for r in results}) if results else []
+    unique_machines = sorted({r["machine"] for r in results}) if results else []
+    num_tests = len(results_by_test)
+    num_results = len(results)
+    last_dt = max(
+        (r.get("date_obj") for r in results if r.get("date_obj")), default=None
+    )
+    last_dt_str = last_dt.strftime("%Y-%m-%d %H:%M:%S UTC") if last_dt else "N/A"
+
     # Build HTML
     parts = []
     parts.append("<!DOCTYPE html>")
-    parts.append("<html lang=\"en\">")
+    parts.append('<html lang="en">')
     parts.append("<head>")
-    parts.append("  <meta charset=\"utf-8\">")
-    parts.append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+    parts.append('  <meta charset="utf-8">')
+    parts.append(
+        '  <meta name="viewport" content="width=device-width, initial-scale=1">'
+    )
     parts.append("  <title>AstroBenchmarks Leaderboard</title>")
     parts.append(
-        "  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,\n"
-        " Noto Sans,Helvetica,Arial,sans-serif;padding:24px;max-width:1200px;margin:0 auto;}\n"
-        " h1{margin:0 0 16px;} .muted{color:#666;} .chip{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;margin-right:6px;font-size:12px;}\n"
-        " table{border-collapse:collapse;width:100%;margin:12px 0 32px;} th,td{border:1px solid #e5e5e5;padding:8px 10px;text-align:left;} th{background:#fafafa;}\n"
-        " .test-header{display:flex;align-items:baseline;gap:12px;margin-top:28px;} .nowrap{white-space:nowrap;}\n"
-        " .small{font-size:12px;color:#666;} a{text-decoration:none;color:#0645ad;} a:hover{text-decoration:underline;}\n"
+        "  <style>:root{--bg:#ffffff;--fg:#111;--muted:#666;--card:#f6f6f7;--border:#e5e5e5;--link:#0b63c6;--chip:#e9eef5;}\n"
+        " [data-theme=dark]{--bg:#0f1116;--fg:#e6e6e6;--muted:#9aa0a6;--card:#171a21;--border:#2a2f3a;--link:#66a7ff;--chip:#1f2633;}\n"
+        " html,body{height:100%;} body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Noto Sans,Helvetica,Arial,sans-serif; margin:0;}\n"
+        " .container{max-width:1200px;margin:0 auto;padding:24px;}\n"
+        " .topbar{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--border);}\n"
+        " .topbar-inner{display:flex;align-items:center;gap:16px;justify-content:space-between;max-width:1200px;margin:0 auto;padding:12px 24px;}\n"
+        " .brand{display:flex;align-items:baseline;gap:12px;} .brand h1{font-size:20px;margin:0;} .muted{color:var(--muted);}\n"
+        " .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}\n"
+        " .search{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);}\n"
+        " .btn{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--fg);cursor:pointer;} .btn:hover{filter:brightness(0.98);}\n"
+        " a{color:var(--link);} a:hover{text-decoration:none;filter:brightness(1.1);}\n"
+        " .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0 24px;}\n"
+        " .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;} .card .label{font-size:12px;color:var(--muted);} .card .value{font-weight:600;font-size:20px;}\n"
+        " .layout{display:grid;grid-template-columns:220px 1fr;gap:24px;} @media(max-width:1000px){.layout{grid-template-columns:1fr;}}\n"
+        " .sidebar{position:sticky;top:64px;align-self:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;}\n"
+        " .sidebar h3{margin:6px 8px;font-size:14px;color:var(--muted);} .nav{list-style:none;margin:0;padding:0;} .nav a{display:block;padding:8px 10px;border-radius:8px;color:var(--fg);} .nav a:hover{background:rgba(0,0,0,0.04);} [data-theme=dark] .nav a:hover{background:rgba(255,255,255,0.06);}\n"
+        " .test-header{display:flex;align-items:baseline;gap:12px;margin-top:28px;} .nowrap{white-space:nowrap;} .small{font-size:12px;color:var(--muted);}\n"
+        " .chip{display:inline-block;padding:2px 8px;border:1px solid var(--border);border-radius:999px;margin-right:6px;font-size:12px;background:var(--chip);}\n"
+        " table{border-collapse:collapse;width:100%;margin:12px 0 32px;} th,td{border:1px solid var(--border);padding:10px;text-align:left;} th{background:var(--card);position:sticky;top:48px;z-index:1;}\n"
+        " .best{background:linear-gradient(90deg,rgba(255,215,0,0.18),transparent);}\n"
+        " .footer{margin:32px 0;color:var(--muted);}\n"
         " </style>"
+    )
+    parts.append(
+        "  <script>\n"
+        "(function(){\n"
+        "  const stored=localStorage.getItem('ab_theme');\n"
+        "  if(stored){document.documentElement.setAttribute('data-theme',stored);}\n"
+        "})();\n"
+        "function toggleTheme(){\n"
+        "  const cur=document.documentElement.getAttribute('data-theme');\n"
+        "  const next=cur==='dark'?'light':'dark';\n"
+        "  document.documentElement.setAttribute('data-theme',next);\n"
+        "  localStorage.setItem('ab_theme',next);\n"
+        "}\n"
+        "function filterRows(q){\n"
+        "  q=(q||'').toLowerCase();\n"
+        "  document.querySelectorAll('tbody tr.result-row').forEach(function(tr){\n"
+        "    const t=(tr.getAttribute('data-test')+' '+tr.getAttribute('data-code')+' '+tr.getAttribute('data-machine')+' '+tr.textContent).toLowerCase();\n"
+        "    tr.style.display = t.indexOf(q)>=0 ? '' : 'none';\n"
+        "  });\n"
+        "}\n"
+        "function sortTable(tableId,col,asc){\n"
+        "  const table=document.getElementById(tableId);\n"
+        "  const tbody=table.querySelector('tbody');\n"
+        "  const getVal=(tr)=>tr.children[col].getAttribute('data-sort')||tr.children[col].innerText;\n"
+        "  const rows=Array.from(tbody.querySelectorAll('tr')).filter(r=>r.style.display!=='none');\n"
+        "  rows.sort((a,b)=>{\n"
+        "    const va=getVal(a); const vb=getVal(b);\n"
+        "    const na=parseFloat(va); const nb=parseFloat(vb);\n"
+        "    const bothNum = !isNaN(na) && !isNaN(nb);\n"
+        "    const cmp = bothNum ? (na-nb) : va.localeCompare(vb);\n"
+        "    return asc?cmp:-cmp;\n"
+        "  });\n"
+        "  rows.forEach(r=>tbody.appendChild(r));\n"
+        "}\n"
+        "</script>"
     )
     parts.append("</head>")
     parts.append("<body>")
-    parts.append("  <h1>AstroBenchmarks Leaderboard</h1>")
+    parts.append('  <div class="topbar"><div class="topbar-inner">')
     parts.append(
-        f"  <div class=\"muted\">Generated {html_escape(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%SZ'))}</div>"
+        '    <div class="brand"><h1>AstroBenchmarks Leaderboard</h1>'
+        + f'<span class="muted">Updated {html_escape(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"))}</span></div>'
     )
+    parts.append('    <div class="controls">')
+    parts.append(
+        '      <input id="global-search" class="search" placeholder="Search code, machine, test, commit..." oninput="filterRows(this.value)">'
+    )
+    parts.append(
+        '      <button class="btn" onclick="toggleTheme()">Toggle theme</button>'
+    )
+    parts.append("    </div>")
+    parts.append("  </div></div>")
+    parts.append('  <div class="container">')
+
+    # Stats cards
+    parts.append('  <div class="stats">')
+    parts.append(
+        f'    <div class="card"><div class="label">Tests</div><div class="value">{num_tests}</div></div>'
+    )
+    parts.append(
+        f'    <div class="card"><div class="label">Results</div><div class="value">{num_results}</div></div>'
+    )
+    parts.append(
+        f'    <div class="card"><div class="label">Codes</div><div class="value">{len(unique_codes)}</div></div>'
+    )
+    parts.append(
+        f'    <div class="card"><div class="label">Machines</div><div class="value">{len(unique_machines)}</div></div>'
+    )
+    parts.append(
+        f'    <div class="card"><div class="label">Last result</div><div class="value">{html_escape(last_dt_str)}</div></div>'
+    )
+    parts.append("  </div>")
+
+    # Sidebar navigation
+    parts.append('  <div class="layout">')
+    parts.append('    <aside class="sidebar">')
+    parts.append("      <h3>Tests</h3>")
+    parts.append('      <ul class="nav">')
+    for tname in sorted(results_by_test.keys()):
+        parts.append(
+            f'        <li><a href="#{html_escape(tname)}">{html_escape(tname)}</a></li>'
+        )
+    parts.append("      </ul>")
+    parts.append("    </aside>")
+    parts.append("    <main>")
 
     if not results_by_test:
         parts.append("  <p>No results found in <code>results/</code>.</p>")
@@ -154,28 +263,45 @@ def generate_html(benchmarks: dict, results: list) -> str:
             tags = meta.get("tags", []) or []
             readme_rel = meta.get("readme")
 
-            parts.append("  <div class=\"test-header\">")
-            parts.append(f"    <h2 id=\"{html_escape(test_name)}\">{html_escape(title)}</h2>")
+            parts.append('  <div class="test-header">')
+            parts.append(
+                f'    <h2 id="{html_escape(test_name)}">{html_escape(title)}</h2>'
+            )
             if readme_rel:
                 parts.append(
-                    f"    <a class=\"small\" href=\"../{html_escape(readme_rel)}\" target=\"_blank\">README</a>"
+                    f'    <a class="small" href="../{html_escape(readme_rel)}" target="_blank">README</a>'
                 )
             parts.append("  </div>")
             if desc:
-                parts.append(f"  <div class=\"muted\">{html_escape(desc)}</div>")
+                parts.append(f'  <div class="muted">{html_escape(desc)}</div>')
             if tags:
                 parts.append(
-                    '  <div>' + ' '.join(f'<span class="chip">{html_escape(t)}</span>' for t in tags) + '</div>'
+                    "  <div>"
+                    + " ".join(
+                        f'<span class="chip">{html_escape(t)}</span>' for t in tags
+                    )
+                    + "</div>"
                 )
 
+            # Identify best result row index for highlighting
+            best_idx = None
+            if recs:
+                best_idx = 0
+
             parts.append("  <table>")
+            table_id = f"table-{html_escape(test_name)}"
             parts.append(
                 "    <thead><tr>"
-                "<th>Rank</th><th>Code</th><th>Machine</th><th>Commit</th>"
-                '<th class="nowrap">Date (UTC)</th><th>Result</th><th>Run file</th>'
+                f"<th onclick=\"sortTable('{table_id}',0,true)\">Rank</th>"
+                f"<th onclick=\"sortTable('{table_id}',1,true)\">Code</th>"
+                f"<th onclick=\"sortTable('{table_id}',2,true)\">Machine</th>"
+                f"<th onclick=\"sortTable('{table_id}',3,true)\">Commit</th>"
+                f'<th class="nowrap" onclick="sortTable(\'{table_id}\',4,true)">Date (UTC)</th>'
+                f"<th onclick=\"sortTable('{table_id}',5,true)\">Result</th>"
+                f"<th onclick=\"sortTable('{table_id}',6,true)\">Run file</th>"
                 "</tr></thead>"
             )
-            parts.append("    <tbody>")
+            parts.append(f'    <tbody id="{table_id}">')
             for idx, r in enumerate(recs, start=1):
                 commit_disp = (r.get("commit") or "").strip()
                 if commit_disp:
@@ -188,20 +314,26 @@ def generate_html(benchmarks: dict, results: list) -> str:
                 elif r.get("date"):
                     date_disp = r["date"]
                 result_disp = r.get("result")
+                best_class = (
+                    " best" if best_idx is not None and idx == best_idx + 1 else ""
+                )
                 parts.append(
-                    "      <tr>"
-                    f"<td>{idx}</td>"
-                    f"<td>{html_escape(r['code'])}</td>"
-                    f"<td>{html_escape(r['machine'])}</td>"
-                    f'<td class="nowrap">{html_escape(short_commit) if short_commit else ''}</td>'
-                    f'<td class="nowrap">{html_escape(date_disp)}</td>'
-                    f"<td>{html_escape(result_disp if result_disp is not None else '')}</td>"
-                    f"<td><a href=\"../{html_escape(r['file'])}\" target=\"_blank\">{html_escape(Path(r['file']).name)}</a></td>"
+                    f'      <tr class="result-row{best_class}" data-test="{html_escape(test_name)}" data-code="{html_escape(r["code"])}" data-machine="{html_escape(r["machine"])}">'
+                    f'<td data-sort="{idx}">{idx}</td>'
+                    f'<td data-sort="{html_escape(r["code"])}">{html_escape(r["code"])}</td>'
+                    f'<td data-sort="{html_escape(r["machine"])}">{html_escape(r["machine"])}</td>'
+                    f'<td class="nowrap" data-sort="{html_escape(short_commit)}">{html_escape(short_commit) if short_commit else ""}</td>'
+                    f'<td class="nowrap" data-sort="{html_escape(date_disp)}">{html_escape(date_disp)}</td>'
+                    f'<td data-sort="{html_escape(result_disp if result_disp is not None else "")}">{html_escape(result_disp if result_disp is not None else "")}</td>'
+                    f'<td data-sort="{html_escape(Path(r["file"]).name)}"><a href="../{html_escape(r["file"])}" target="_blank">{html_escape(Path(r["file"]).name)}</a></td>'
                     "</tr>"
                 )
             parts.append("    </tbody>")
             parts.append("  </table>")
 
+    parts.append("    </main>")
+    parts.append("  </div>")
+    parts.append('  <div class="footer container">Built with ❤️ — AstroBenchmarks</div>')
     parts.append("</body>")
     parts.append("</html>")
     return "\n".join(parts)
@@ -219,5 +351,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
