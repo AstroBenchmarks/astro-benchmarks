@@ -143,7 +143,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
     parts.append(
         '  <meta name="viewport" content="width=device-width, initial-scale=1">'
     )
-    parts.append("  <title>AstroBenchmarks Leaderboard</title>")
+    parts.append("  <title>AstroBenchmarks</title>")
     parts.append(
         "  <style>:root{--bg:#ffffff;--fg:#111;--muted:#666;--card:#f6f6f7;--border:#e5e5e5;--link:#0b63c6;--chip:#e9eef5;}\n"
         " [data-theme=dark]{--bg:#0f1116;--fg:#e6e6e6;--muted:#9aa0a6;--card:#171a21;--border:#2a2f3a;--link:#66a7ff;--chip:#1f2633;}\n"
@@ -207,7 +207,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
     parts.append("<body>")
     parts.append('  <div class="topbar"><div class="topbar-inner">')
     parts.append(
-        '    <div class="brand"><h1>AstroBenchmarks Leaderboard</h1>'
+        '    <div class="brand"><h1>AstroBenchmarks</h1>'
         + f'<span class="muted">Updated {html_escape(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"))}</span></div>'
     )
     parts.append('    <div class="controls">')
