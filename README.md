@@ -2,7 +2,7 @@
 
 Benchmarking Astrophysical Simulation Codes
 
-Copyright (C) The Astro Benchmarks Team, 2025
+Copyright (c) 2025 The AstroBenchmarks Team
 
 
 ## How it works

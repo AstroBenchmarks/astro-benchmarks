@@ -1,0 +1,8 @@
+{
+    "arch": "arm64",
+    "cpu": "Apple M3 Max",
+    "machine": "C916PXT6XW",
+    "num_cpu": "16",
+    "os": "Darwin 24.1.0",
+    "ram": "68719476736"
+}
