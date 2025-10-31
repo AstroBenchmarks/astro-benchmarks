@@ -1,0 +1,7 @@
+{
+  "version": "version or commit_hash",
+  "date": "20XX-XX-XX XX:XX:XX+00:00",
+  "runtime_(seconds)": 0.0,
+  "n_timesteps": 100,
+  "setup": "https://<link-to-setup>"
+}

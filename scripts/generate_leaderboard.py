@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-import os
 import json
 import datetime
 import sys
-import subprocess
+import shutil
 from pathlib import Path
 
 
@@ -313,6 +312,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
         '  <meta name="viewport" content="width=device-width, initial-scale=1">'
     )
     parts.append("  <title>AstroBenchmarks</title>")
+    parts.append('  <link rel="icon" type="image/png" href="astro_benchmarks.png">')
     parts.append(
         "  <style>:root{--bg:#ffffff;--fg:#111;--muted:#666;--card:#f6f6f7;--border:#e5e5e5;--link:#0b63c6;--chip:#e9eef5;}\n"
         " [data-theme=dark]{--bg:#0f1116;--fg:#e6e6e6;--muted:#9aa0a6;--card:#171a21;--border:#2a2f3a;--link:#66a7ff;--chip:#1f2633;}\n"
@@ -320,7 +320,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
         " .container{max-width:1200px;margin:0 auto;padding:24px;}\n"
         " .topbar{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--border);}\n"
         " .topbar-inner{display:flex;align-items:center;gap:16px;justify-content:space-between;max-width:1200px;margin:0 auto;padding:12px 24px;}\n"
-        " .brand{display:flex;align-items:baseline;gap:12px;} .brand h1{font-size:20px;margin:0;} .muted{color:var(--muted);}\n"
+        " .brand{display:flex;align-items:center;gap:12px;} .brand h1{font-size:20px;margin:0;} .brand img{height:32px;width:auto;} .muted{color:var(--muted);}\n"
         " .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}\n"
         " .search{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);min-width:360px;}\n"
         " .btn{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--fg);cursor:pointer;} .btn:hover{filter:brightness(0.98);}\n"
@@ -421,8 +421,11 @@ def generate_html(benchmarks: dict, results: list) -> str:
     parts.append("<body>")
     parts.append('  <div class="topbar"><div class="topbar-inner">')
     parts.append(
-        '    <div class="brand"><h1>AstroBenchmarks</h1>'
-        + f'<span class="muted">Updated {html_escape(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"))}</span></div>'
+        '    <div class="brand">'
+        '      <img src="astro_benchmarks.png" alt="AstroBenchmarks Logo">'
+        "      <h1>AstroBenchmarks</h1>"
+        + f'      <span class="muted">Updated {html_escape(datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ"))}</span>'
+        "    </div>"
     )
     parts.append('    <div class="controls">')
     parts.append(
@@ -673,6 +676,15 @@ def main():
     html = generate_html(benchmarks, results)
     OUTPUT_HTML.write_text(html, encoding="utf-8")
     print(f"Wrote {OUTPUT_HTML}")
+
+    # Copy logo to html directory
+    logo_src = REPO_ROOT / "astro_benchmarks.png"
+    logo_dst = HTML_DIR / "astro_benchmarks.png"
+    if logo_src.exists():
+        shutil.copy2(logo_src, logo_dst)
+        print(f"Copied logo to {logo_dst}")
+    else:
+        print(f"Warning: Logo not found at {logo_src}")
 
 
 if __name__ == "__main__":

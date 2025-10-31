@@ -1,0 +1,8 @@
+{
+  "name": "Orszag-Tang",
+  "description": "2D MHD vortex problem",
+  "tags": [],
+  "sort_by": "runtime_(seconds)",
+  "sort_dir": "asc",
+  "data_file": true
+}
