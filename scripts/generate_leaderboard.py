@@ -2,6 +2,8 @@
 import os
 import json
 import datetime
+import sys
+import subprocess
 from pathlib import Path
 
 
@@ -42,6 +44,7 @@ def discover_benchmarks():
             "tags": info.get("tags", []),
             "sort_by": info.get("sort_by"),
             "sort_dir": info.get("sort_dir", "asc"),
+            "data_file": info.get("data_file", False),
             "readme": readme_path.relative_to(REPO_ROOT).as_posix()
             if readme_path.exists()
             else None,
@@ -124,6 +127,7 @@ def discover_results(benchmarks: dict):
                 # Get template keys for this test
                 test_meta = benchmarks.get(test_name, {})
                 template_keys = test_meta.get("template_keys", [])
+                data_file = test_meta.get("data_file", False)
                 if not template_keys:
                     # Fallback: try to infer from first result file if available
                     for commit_dir in test_dir.iterdir():
@@ -156,15 +160,75 @@ def discover_results(benchmarks: dict):
                     parsed = parse_result_file(result_file, template_keys)
                     if parsed is None:
                         continue
-                    records.append(
-                        {
-                            "code": code_dir.name,
-                            "machine": machine_dir.name,
-                            "test": test_name,
-                            **parsed,
-                        }
-                    )
+
+                    # Generate plot if data_file is true
+                    plot_path = None
+                    if data_file:
+                        data_h5 = commit_dir / "data.h5"
+                        if data_h5.exists():
+                            plot_path = generate_plot(test_name, commit_dir)
+
+                    record = {
+                        "code": code_dir.name,
+                        "machine": machine_dir.name,
+                        "test": test_name,
+                        **parsed,
+                    }
+                    if plot_path:
+                        record["plot"] = plot_path
+                    records.append(record)
     return records
+
+
+def generate_plot(test_name: str, commit_dir: Path) -> str:
+    """
+    Generate a plot by running the benchmark's plot.py script.
+    Returns the relative path to the generated result.png (relative to html/).
+    """
+    benchmark_dir = BENCHMARKS_DIR / test_name
+    plot_script = benchmark_dir / "plot.py"
+
+    if not plot_script.exists():
+        return None
+
+    # Create output directory in html/plots/<code>/<machine>/<test>/<commit>/
+    # Extract code, machine, commit from commit_dir path
+    # commit_dir format: results/<code>/<machine>/<test>/<commit>
+    parts = commit_dir.relative_to(RESULTS_DIR).parts
+    if len(parts) < 4:
+        return None
+    code, machine, test, commit = parts[0], parts[1], parts[2], parts[3]
+
+    output_dir = HTML_DIR / "plots" / code / machine / test / commit
+    output_dir.mkdir(parents=True, exist_ok=True)
+    result_png = output_dir / "result.png"
+
+    # Skip if plot already exists and is newer than data.h5
+    data_h5 = commit_dir / "data.h5"
+    if result_png.exists() and data_h5.exists():
+        if result_png.stat().st_mtime > data_h5.stat().st_mtime:
+            return result_png.relative_to(HTML_DIR).as_posix()
+
+    try:
+        # Import and run the plot function from the benchmark's plot.py
+        sys.path.insert(0, str(benchmark_dir))
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("plot_module", plot_script)
+        plot_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plot_module)
+
+        # Call the plot function with input_dir (for data.h5) and output_dir (for result.png)
+        plot_module.plot(str(commit_dir), str(output_dir))
+        sys.path.pop(0)
+
+        if result_png.exists():
+            return result_png.relative_to(HTML_DIR).as_posix()
+    except Exception as e:
+        print(f"Warning: Failed to generate plot for {commit_dir}: {e}")
+        sys.path.pop(0) if sys.path and sys.path[0] == str(benchmark_dir) else None
+
+    return None
 
 
 def html_escape(text: str) -> str:
@@ -437,12 +501,22 @@ def generate_html(benchmarks: dict, results: list) -> str:
 
             # Build dynamic columns from template.json or union of keys
             template_keys = meta.get("template_keys") or []
+            data_file = meta.get("data_file", False)
             if not template_keys:
                 seen = set()
                 tmp = []
                 for rr in recs:
                     for kk in rr.keys():
-                        if kk in ("code", "machine", "test", "file", "date_obj"):
+                        if kk in (
+                            "code",
+                            "machine",
+                            "test",
+                            "file",
+                            "date_obj",
+                            "plot",
+                            "mtime_ts",
+                            "date_ts",
+                        ):
                             continue
                         if kk not in seen:
                             seen.add(kk)
@@ -505,6 +579,9 @@ def generate_html(benchmarks: dict, results: list) -> str:
                 header_cells.append(
                     f'<th class="sortable{init_cls}" onclick="onHeaderClick(\'{table_id}\',{base_idx + i},this)">{label}</th>'
                 )
+            # Add Plot column if data_file is true
+            if data_file:
+                header_cells.append("<th>Plot</th>")
             parts.append("    <thead><tr>" + "".join(header_cells) + "</tr></thead>")
             parts.append("    <tbody>")
             for idx, r in enumerate(recs, start=1):
@@ -538,6 +615,16 @@ def generate_html(benchmarks: dict, results: list) -> str:
                     cells.append(
                         f'<td{cls_attr} data-sort="{html_escape(val_str)}">{html_escape(display_val)}</td>'
                     )
+                # Add plot cell if data_file is true
+                if data_file:
+                    plot_path = r.get("plot")
+                    if plot_path:
+                        # plot_path is already relative to HTML_DIR
+                        cells.append(
+                            f'<td><a href="{html_escape(plot_path)}" target="_blank"><img src="{html_escape(plot_path)}" alt="Plot" style="max-width:150px;height:auto;display:block;cursor:pointer;"></a></td>'
+                        )
+                    else:
+                        cells.append("<td>—</td>")
                 parts.append(
                     f'      <tr class="result-row{best_class}" data-test="{html_escape(test_name)}" data-code="{html_escape(r["code"])}" data-machine="{html_escape(r["machine"])}">'
                     + "".join(cells)
