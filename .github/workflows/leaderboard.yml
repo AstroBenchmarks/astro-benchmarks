@@ -17,8 +17,21 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Generate leaderboard
         run: python scripts/generate_leaderboard.py
-      - name: Publish html/ to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./html
+          path: './html' # The directory containing your built static site files
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: leaderboard # This job depends on the 'build' job completing successfully
+    permissions:
+      pages: write # Grant write permissions for GitHub Pages
+      id-token: write # Grant write permissions for the OIDC token
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 # Use the deploy-pages action
+
