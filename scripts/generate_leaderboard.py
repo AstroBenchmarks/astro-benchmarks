@@ -481,8 +481,8 @@ def generate_html(benchmarks: dict, results: list) -> str:
             readme_rel = meta.get("readme")
             sort_by = meta.get("sort_by")
             sort_dir = (meta.get("sort_dir") or "asc").lower()
-            # Do not allow initial sort by non-sortable columns (e.g., setup_link)
-            if sort_by == "setup_link":
+            # Do not allow initial sort by non-sortable columns (e.g., setup)
+            if sort_by == "setup":
                 sort_by = None
 
             parts.append('  <div class="test-header">')
@@ -575,7 +575,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
             base_idx = 3
             for i, kk in enumerate(template_keys):
                 label = html_escape(kk.replace("_", " ").title())
-                if kk == "setup_link":
+                if kk == "setup":
                     # Not sortable: render plain header cell without onclick
                     header_cells.append(f"<th>{label}</th>")
                 else:
@@ -624,7 +624,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
                     display_val = val_str[:8] if kk == "commit" and val_str else val_str
                     cls = "nowrap" if kk in ("date", "commit") else ""
                     cls_attr = f' class="{cls}"' if cls else ""
-                    if kk == "setup_link" and val_str:
+                    if kk == "setup" and val_str:
                         url = html_escape(val_str)
                         icon = (
                             '<svg viewBox="0 0 24 24" aria-hidden="true">'
