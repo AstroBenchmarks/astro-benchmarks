@@ -72,8 +72,27 @@ def parse_result_file(result_file: Path, template_keys: list):
         except Exception:
             dt_iso = None
 
+    # File modified time as fallback recency signal
+    try:
+        mtime_ts = result_file.stat().st_mtime
+    except Exception:
+        mtime_ts = None
+
+    # For easy comparisons, also compute a numeric timestamp if date is available
+    date_ts = None
+    if dt_iso is not None:
+        try:
+            # Ensure tz-aware before computing timestamp
+            if dt_iso.tzinfo is None:
+                dt_iso = dt_iso.replace(tzinfo=datetime.timezone.utc)
+            date_ts = dt_iso.timestamp()
+        except Exception:
+            date_ts = None
+
     result = {
         "file": result_file.relative_to(REPO_ROOT).as_posix(),
+        "mtime_ts": mtime_ts,
+        "date_ts": date_ts,
     }
     result.update(extracted)
     if date_str is not None:
@@ -147,16 +166,48 @@ def generate_html(benchmarks: dict, results: list) -> str:
     for rec in results:
         results_by_test.setdefault(rec["test"], []).append(rec)
 
-    # Do not pre-sort; ranks will be determined by user-chosen sort in the UI
-    # (keep discovery order)
+    # Within each test, collapse duplicate rows for the same (code, machine),
+    # keeping only the latest by date (or file mtime as fallback). Preserve the
+    # original discovery order of the kept entries.
+    deduped_by_test = {}
+    for tname, recs in results_by_test.items():
+        best_index_for_key = {}
+        best_score_for_key = {}
+        # Determine the best occurrence index for each (code, machine)
+        for idx, r in enumerate(recs):
+            key = (r.get("code"), r.get("machine"))
+            score = (
+                r.get("date_ts") if r.get("date_ts") is not None else -1,
+                r.get("mtime_ts") if r.get("mtime_ts") is not None else -1,
+                idx,  # fallback to last occurrence if still tied
+            )
+            prev = best_score_for_key.get(key)
+            if (prev is None) or (score >= prev):
+                best_score_for_key[key] = score
+                best_index_for_key[key] = idx
+        # Build deduped list in the order those best indices appear
+        seen_keys = set()
+        deduped = []
+        for idx, r in enumerate(recs):
+            key = (r.get("code"), r.get("machine"))
+            if key in seen_keys:
+                continue
+            if best_index_for_key.get(key) == idx:
+                deduped.append(r)
+                seen_keys.add(key)
+        deduped_by_test[tname] = deduped
 
     # Compute global stats
-    unique_codes = sorted({r["code"] for r in results}) if results else []
-    unique_machines = sorted({r["machine"] for r in results}) if results else []
-    num_tests = len(results_by_test)
-    num_results = len(results)
+    flat_results = [r for recs in deduped_by_test.values() for r in recs]
+    unique_codes = sorted({r["code"] for r in flat_results}) if flat_results else []
+    unique_machines = (
+        sorted({r["machine"] for r in flat_results}) if flat_results else []
+    )
+    num_tests = len(deduped_by_test)
+    num_results = len(flat_results)
     last_dt = max(
-        (r.get("date_obj") for r in results if r.get("date_obj")), default=None
+        (r.get("date_obj") for r in flat_results if r.get("date_obj")),
+        default=None,
     )
     last_dt_str = last_dt.strftime("%Y-%m-%d %H:%M:%S UTC") if last_dt else "N/A"
 
@@ -303,7 +354,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
     parts.append('    <aside class="sidebar">')
     parts.append("      <h3>Tests</h3>")
     parts.append('      <ul class="nav">')
-    for tname in sorted(results_by_test.keys()):
+    for tname in sorted(deduped_by_test.keys()):
         parts.append(
             f'        <li><a href="#{html_escape(tname)}">{html_escape(tname)}</a></li>'
         )
@@ -311,10 +362,10 @@ def generate_html(benchmarks: dict, results: list) -> str:
     parts.append("    </aside>")
     parts.append("    <main>")
 
-    if not results_by_test:
+    if not deduped_by_test:
         parts.append("  <p>No results found in <code>results/</code>.</p>")
     else:
-        for test_name, recs in sorted(results_by_test.items()):
+        for test_name, recs in sorted(deduped_by_test.items()):
             meta = benchmarks.get(test_name, {})
             title = meta.get("name", test_name)
             desc = meta.get("description", "")
