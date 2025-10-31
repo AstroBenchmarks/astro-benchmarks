@@ -3,5 +3,5 @@
   "date": "2025-10-31 22:33:13+0000",
   "runtime_(seconds)": 94.7,
   "n_timesteps": 1794,
-  "setup": "missing"
+  "setup": "https://github.com/AstroBenchmarks/C916PXT6XW/tree/main/constrainedtransport-python/orszag-tang"
 }

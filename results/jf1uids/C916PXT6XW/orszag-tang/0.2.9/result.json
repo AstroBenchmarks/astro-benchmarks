@@ -3,5 +3,5 @@
   "date": "2025-10-31 22:09:51+0000",
   "runtime_(seconds)": 234.8,
   "n_timesteps": 2890,
-  "setup": "missing"
+  "setup": "https://github.com/AstroBenchmarks/C916PXT6XW/tree/main/jf1uids/orszag-tang"
 }
