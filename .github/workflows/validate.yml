@@ -1,0 +1,17 @@
+name: Validate Submission
+on:
+  pull_request:
+    paths:
+      - 'results/**.json'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install -r requirements.txt
+      - name: Validate submission
+        run: python scripts/validate_submission.py
