@@ -40,6 +40,8 @@ def discover_benchmarks():
             "name": info.get("name", item.name),
             "description": info.get("description", ""),
             "tags": info.get("tags", []),
+            "sort_by": info.get("sort_by"),
+            "sort_dir": info.get("sort_dir", "asc"),
             "readme": readme_path.relative_to(REPO_ROOT).as_posix()
             if readme_path.exists()
             else None,
@@ -242,6 +244,7 @@ def generate_html(benchmarks: dict, results: list) -> str:
         " .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}\n"
         " .search{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);min-width:360px;}\n"
         " .btn{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--fg);cursor:pointer;} .btn:hover{filter:brightness(0.98);}\n"
+        " th.sortable{cursor:pointer;user-select:none;} th.sort-asc::after{content:' \\25B2';color:var(--muted);font-size:0.85em;} th.sort-desc::after{content:' \\25BC';color:var(--muted);font-size:0.85em;}\n"
         " .icon-btn{width:40px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;}\n"
         " .icon-btn svg{width:18px;height:18px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}\n"
         " .icon-btn .moon{display:none;}\n"
@@ -315,6 +318,20 @@ def generate_html(benchmarks: dict, results: list) -> str:
         "    rank++;\n"
         "  });\n"
         "}\n"
+        "function onHeaderClick(tableId,col,th){\n"
+        "  const table=document.getElementById(tableId);\n"
+        "  const lastCol=table.getAttribute('data-sort-col');\n"
+        "  const lastAsc=table.getAttribute('data-sort-asc')==='true';\n"
+        "  let asc=true;\n"
+        "  if(String(col)===lastCol){ asc=!lastAsc; } else { asc=true; }\n"
+        "  sortTable(tableId,col,asc);\n"
+        "  table.setAttribute('data-sort-col', String(col));\n"
+        "  table.setAttribute('data-sort-asc', String(asc));\n"
+        "  // Update header indicator classes within this table\n"
+        "  const thead=table.querySelector('thead');\n"
+        "  if(thead){ thead.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc')); }\n"
+        "  if(th){ th.classList.add(asc?'sort-asc':'sort-desc'); }\n"
+        "}\n"
         "</script>"
     )
     parts.append("</head>")
@@ -379,6 +396,8 @@ def generate_html(benchmarks: dict, results: list) -> str:
             desc = meta.get("description", "")
             tags = meta.get("tags", []) or []
             readme_rel = meta.get("readme")
+            sort_by = meta.get("sort_by")
+            sort_dir = (meta.get("sort_dir") or "asc").lower()
 
             parts.append('  <div class="test-header">')
             parts.append(
@@ -400,11 +419,6 @@ def generate_html(benchmarks: dict, results: list) -> str:
                     + "</div>"
                 )
 
-            # Identify best result row index for highlighting
-            best_idx = None
-            if recs:
-                best_idx = 0
-
             # Build dynamic columns from template.json or union of keys
             template_keys = meta.get("template_keys") or []
             if not template_keys:
@@ -419,26 +433,65 @@ def generate_html(benchmarks: dict, results: list) -> str:
                             tmp.append(kk)
                 template_keys = tmp
 
-            parts.append("  <table>")
+            # Initial sorting by sort_by from benchmark metadata (ascending by default)
+            initial_sort_col = None
+            if sort_by and recs:
+
+                def _val_for_sort(r):
+                    # Special case for date: prefer numeric timestamp
+                    if sort_by == "date":
+                        v = r.get("date_ts")
+                        if v is None:
+                            v = r.get("date")
+                    else:
+                        v = r.get(sort_by)
+                    if v is None:
+                        return (1, 0, "")  # missing goes to end
+                    try:
+                        f = float(v)
+                        return (0, 0, f)
+                    except Exception:
+                        return (0, 1, str(v).lower())
+
+                reverse = sort_dir == "desc"
+                recs.sort(key=_val_for_sort, reverse=reverse)
+                # Determine column index for header indicator
+                if sort_by in template_keys:
+                    initial_sort_col = 3 + template_keys.index(sort_by)
+
             table_id = f"table-{html_escape(test_name)}"
+            table_attrs = [f'id="{table_id}"']
+            if initial_sort_col is not None:
+                table_attrs.append(f'data-sort-col="{initial_sort_col}"')
+                table_attrs.append(
+                    f'data-sort-asc="{"false" if sort_dir == "desc" else "true"}"'
+                )
+            parts.append("  <table " + " ".join(table_attrs) + ">")
             header_cells = []
             header_cells.append(
-                f"<th onclick=\"sortTable('{table_id}',0,true)\">Rank</th>"
+                f'<th class="sortable" onclick="onHeaderClick(\'{table_id}\',0,this)">Rank</th>'
             )
             header_cells.append(
-                f"<th onclick=\"sortTable('{table_id}',1,true)\">Code</th>"
+                f'<th class="sortable" onclick="onHeaderClick(\'{table_id}\',1,this)">Code</th>'
             )
             header_cells.append(
-                f"<th onclick=\"sortTable('{table_id}',2,true)\">Machine</th>"
+                f'<th class="sortable" onclick="onHeaderClick(\'{table_id}\',2,this)">Machine</th>'
             )
             base_idx = 3
             for i, kk in enumerate(template_keys):
                 label = html_escape(kk.replace("_", " ").title())
+                init_cls = (
+                    " sort-asc"
+                    if (kk == sort_by and sort_dir != "desc")
+                    else (
+                        " sort-desc" if (kk == sort_by and sort_dir == "desc") else ""
+                    )
+                )
                 header_cells.append(
-                    f"<th onclick=\"sortTable('{table_id}',{base_idx + i},true)\">{label}</th>"
+                    f'<th class="sortable{init_cls}" onclick="onHeaderClick(\'{table_id}\',{base_idx + i},this)">{label}</th>'
                 )
             parts.append("    <thead><tr>" + "".join(header_cells) + "</tr></thead>")
-            parts.append(f'    <tbody id="{table_id}">')
+            parts.append("    <tbody>")
             for idx, r in enumerate(recs, start=1):
                 best_class = " best" if idx == 1 else ""
                 cells = []

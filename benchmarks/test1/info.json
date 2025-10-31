@@ -1,5 +1,7 @@
 {
   "name": "test1",
   "description": "This is also a dummy null test",
-  "tags": []
+  "tags": [],
+  "sort_by": "result",
+  "sort_dir": "desc"
 }
