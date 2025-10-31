@@ -330,6 +330,9 @@ def generate_html(benchmarks: dict, results: list) -> str:
         " .icon-btn .moon{display:none;}\n"
         " [data-theme=dark] .icon-btn .sun{display:none;}\n"
         " [data-theme=dark] .icon-btn .moon{display:inline;}\n"
+        " .link-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--border);border-radius:8px;background:var(--card);}\n"
+        " .link-icon:hover{filter:brightness(0.98);}\n"
+        " .link-icon svg{width:16px;height:16px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}\n"
         " a{color:var(--link);} a:hover{text-decoration:none;filter:brightness(1.1);}\n"
         " .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0 24px;}\n"
         " .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;} .card .label{font-size:12px;color:var(--muted);} .card .value{font-weight:600;font-size:20px;}\n"
@@ -478,6 +481,9 @@ def generate_html(benchmarks: dict, results: list) -> str:
             readme_rel = meta.get("readme")
             sort_by = meta.get("sort_by")
             sort_dir = (meta.get("sort_dir") or "asc").lower()
+            # Do not allow initial sort by non-sortable columns (e.g., setup_link)
+            if sort_by == "setup_link":
+                sort_by = None
 
             parts.append('  <div class="test-header">')
             parts.append(
@@ -569,16 +575,22 @@ def generate_html(benchmarks: dict, results: list) -> str:
             base_idx = 3
             for i, kk in enumerate(template_keys):
                 label = html_escape(kk.replace("_", " ").title())
-                init_cls = (
-                    " sort-asc"
-                    if (kk == sort_by and sort_dir != "desc")
-                    else (
-                        " sort-desc" if (kk == sort_by and sort_dir == "desc") else ""
+                if kk == "setup_link":
+                    # Not sortable: render plain header cell without onclick
+                    header_cells.append(f"<th>{label}</th>")
+                else:
+                    init_cls = (
+                        " sort-asc"
+                        if (kk == sort_by and sort_dir != "desc")
+                        else (
+                            " sort-desc"
+                            if (kk == sort_by and sort_dir == "desc")
+                            else ""
+                        )
                     )
-                )
-                header_cells.append(
-                    f'<th class="sortable{init_cls}" onclick="onHeaderClick(\'{table_id}\',{base_idx + i},this)">{label}</th>'
-                )
+                    header_cells.append(
+                        f'<th class="sortable{init_cls}" onclick="onHeaderClick(\'{table_id}\',{base_idx + i},this)">{label}</th>'
+                    )
             # Add Plot column if data_file is true
             if data_file:
                 header_cells.append("<th>Plot</th>")
@@ -612,9 +624,21 @@ def generate_html(benchmarks: dict, results: list) -> str:
                     display_val = val_str[:8] if kk == "commit" and val_str else val_str
                     cls = "nowrap" if kk in ("date", "commit") else ""
                     cls_attr = f' class="{cls}"' if cls else ""
-                    cells.append(
-                        f'<td{cls_attr} data-sort="{html_escape(val_str)}">{html_escape(display_val)}</td>'
-                    )
+                    if kk == "setup_link" and val_str:
+                        url = html_escape(val_str)
+                        icon = (
+                            '<svg viewBox="0 0 24 24" aria-hidden="true">'
+                            '<path d="M10 14a5 5 0 0 0 7.07 0l2.12-2.12A5 5 0 0 0 14.1 4.9L13 6" />'
+                            '<path d="M14 10a5 5 0 0 0-7.07 0L4.8 12.12A5 5 0 0 0 9.9 19.2L11 18" />'
+                            "</svg>"
+                        )
+                        cells.append(
+                            f'<td{cls_attr} data-sort="{url}"><a class="link-icon" href="{url}" target="_blank" rel="noopener noreferrer" aria-label="Open link">{icon}</a></td>'
+                        )
+                    else:
+                        cells.append(
+                            f'<td{cls_attr} data-sort="{html_escape(val_str)}">{html_escape(display_val)}</td>'
+                        )
                 # Add plot cell if data_file is true
                 if data_file:
                     plot_path = r.get("plot")

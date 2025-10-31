@@ -4,5 +4,6 @@
   "runtime": 11.0,
   "throughput": 10.0,
   "peak_memory": 10.0,
-  "accuracy": 99.0
+  "accuracy": 99.0,
+  "setup_link": "https://example-link-to-setup.com"
 }
