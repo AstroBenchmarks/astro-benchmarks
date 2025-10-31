@@ -110,7 +110,7 @@ def discover_results(benchmarks: dict):
         return records
 
     # Expected structure:
-    # results/<code>/<machine>/<test_problem>/*.json
+    # results/<code>/<machine>/<test_problem>/<commit>/result.json
     for code_dir in RESULTS_DIR.iterdir():
         if not code_dir.is_dir():
             continue
@@ -126,18 +126,34 @@ def discover_results(benchmarks: dict):
                 template_keys = test_meta.get("template_keys", [])
                 if not template_keys:
                     # Fallback: try to infer from first result file if available
-                    first_file = next(test_dir.glob("*.json"), None)
-                    if first_file:
-                        sample_data = read_json_file(first_file)
-                        if isinstance(sample_data, dict):
-                            template_keys = [
-                                k
-                                for k in sample_data.keys()
-                                if k
-                                not in ("code", "machine", "test", "file", "date_obj")
-                            ]
-                for json_file in test_dir.glob("*.json"):
-                    parsed = parse_result_file(json_file, template_keys)
+                    for commit_dir in test_dir.iterdir():
+                        if not commit_dir.is_dir():
+                            continue
+                        first_file = commit_dir / "result.json"
+                        if first_file.exists():
+                            sample_data = read_json_file(first_file)
+                            if isinstance(sample_data, dict):
+                                template_keys = [
+                                    k
+                                    for k in sample_data.keys()
+                                    if k
+                                    not in (
+                                        "code",
+                                        "machine",
+                                        "test",
+                                        "file",
+                                        "date_obj",
+                                    )
+                                ]
+                            break
+                # Iterate through commit directories
+                for commit_dir in test_dir.iterdir():
+                    if not commit_dir.is_dir():
+                        continue
+                    result_file = commit_dir / "result.json"
+                    if not result_file.exists():
+                        continue
+                    parsed = parse_result_file(result_file, template_keys)
                     if parsed is None:
                         continue
                     records.append(
