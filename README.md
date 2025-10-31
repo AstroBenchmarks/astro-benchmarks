@@ -20,7 +20,7 @@ throughput,
 memory usage,
 and accuracy.
 
-Results are compiled and published on a Leaderboard.
+Results are compiled and published on the [Leaderboard](XXX).
 
 
 ## Benchmarks
