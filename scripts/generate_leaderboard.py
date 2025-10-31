@@ -468,9 +468,8 @@ def generate_html(benchmarks: dict, results: list) -> str:
                 )
             parts.append("  <table " + " ".join(table_attrs) + ">")
             header_cells = []
-            header_cells.append(
-                f'<th class="sortable" onclick="onHeaderClick(\'{table_id}\',0,this)">Rank</th>'
-            )
+            # Rank column is intentionally not sortable
+            header_cells.append("<th>Rank</th>")
             header_cells.append(
                 f'<th class="sortable" onclick="onHeaderClick(\'{table_id}\',1,this)">Code</th>'
             )
