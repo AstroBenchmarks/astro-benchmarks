@@ -1,8 +1,8 @@
 {
   "name": "test0",
-  "description": "This is dummy null test",
+  "description": "This is an example (dummy) test",
   "tags": [],
   "sort_by": "runtime",
   "sort_dir": "asc",
-  "files": [ "rho.h5", "vx.h5", "vy.h5" ]
+  "data_file": true
 }
