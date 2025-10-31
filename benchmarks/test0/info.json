@@ -3,5 +3,6 @@
   "description": "This is dummy null test",
   "tags": [],
   "sort_by": "runtime",
-  "sort_dir": "asc"
+  "sort_dir": "asc",
+  "files": [ "rho.h5", "vx.h5", "vy.h5" ]
 }
