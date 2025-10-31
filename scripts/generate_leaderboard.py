@@ -242,6 +242,11 @@ def generate_html(benchmarks: dict, results: list) -> str:
         " .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}\n"
         " .search{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);min-width:360px;}\n"
         " .btn{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--fg);cursor:pointer;} .btn:hover{filter:brightness(0.98);}\n"
+        " .icon-btn{width:40px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;}\n"
+        " .icon-btn svg{width:18px;height:18px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}\n"
+        " .icon-btn .moon{display:none;}\n"
+        " [data-theme=dark] .icon-btn .sun{display:none;}\n"
+        " [data-theme=dark] .icon-btn .moon{display:inline;}\n"
         " a{color:var(--link);} a:hover{text-decoration:none;filter:brightness(1.1);}\n"
         " .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0 24px;}\n"
         " .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;} .card .label{font-size:12px;color:var(--muted);} .card .value{font-weight:600;font-size:20px;}\n"
@@ -324,7 +329,10 @@ def generate_html(benchmarks: dict, results: list) -> str:
         '      <input id="global-search" class="search" placeholder="Search code, machine, test, commit..." oninput="filterRows(this.value)">'
     )
     parts.append(
-        '      <button class="btn" onclick="toggleTheme()">Toggle theme</button>'
+        '      <button class="btn icon-btn" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">'
+        '        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>'
+        '        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z"></path></svg>'
+        "      </button>"
     )
     parts.append("    </div>")
     parts.append("  </div></div>")
