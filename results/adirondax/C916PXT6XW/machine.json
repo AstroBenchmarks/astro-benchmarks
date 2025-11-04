@@ -1,0 +1,11 @@
+{
+    "machine": "C916PXT6XW",
+    "arch": "arm64",
+    "cpu": "Apple M3 Max",
+    "gpu": "none",
+    "num_cpu": "16",
+    "num_gpu": "0",
+    "num_node": "1",
+    "os": "Darwin 24.1.0",
+    "ram": "68719476736"
+}

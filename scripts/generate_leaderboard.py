@@ -662,7 +662,9 @@ def generate_html(benchmarks: dict, results: list) -> str:
 
     parts.append("    </main>")
     parts.append("  </div>")
-    parts.append('  <div class="footer container">Built with ❤️ — <a href="https://github.com/AstroBenchmarks/astro-benchmarks" target="_blank">AstroBenchmarks</a></div>')
+    parts.append(
+        '  <div class="footer container">Built with ❤️ — <a href="https://github.com/AstroBenchmarks/astro-benchmarks" target="_blank">AstroBenchmarks</a></div>'
+    )
     parts.append("</body>")
     parts.append("</html>")
     return "\n".join(parts)
